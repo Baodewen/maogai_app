@@ -18,3 +18,15 @@ npm run dev
 npm run build
 npm run android:sync
 ```
+
+## 题库
+
+当前内置原刷题题库 245 题，并追加南京工业大学历年试卷 133 题，总计 378 题。历年试卷按年份作为章节导入，可通过“历年试卷”模式或章节筛选单独练习。
+
+重新导入历年试卷题库：
+
+```bash
+npm run import:njust
+```
+
+默认读取 `W:\Download\南京工业大学毛概历年试卷_统一格式含答案_JSON打包.zip`，也可以在脚本后传入 zip 路径。

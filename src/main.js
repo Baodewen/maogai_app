@@ -11,6 +11,7 @@ const MODES = [
   ['normal', '顺序刷题'],
   ['random', '随机刷题'],
   ['initialWrong', '原始错题'],
+  ['papers', '历年试卷'],
   ['wrong', '我的错题本'],
   ['favorite', '收藏夹'],
   ['hard', '重点题'],
@@ -228,6 +229,7 @@ function rebuildSession(keepIndex = false) {
   let list = baseFilteredQuestions();
   if (mode === 'random') list = shuffleArray(list);
   if (mode === 'initialWrong') list = list.filter((question) => question.initialWrong);
+  if (mode === 'papers') list = list.filter((question) => question.id.startsWith('paper-'));
   if (mode === 'wrong') list = list.filter((question) => state.wrong.includes(question.id));
   if (mode === 'favorite') list = list.filter((question) => state.favorite.includes(question.id));
   if (mode === 'hard') list = list.filter((question) => state.hard.includes(question.id));
@@ -548,7 +550,7 @@ function handleKeyboard(event) {
   if (!quizList.length) return;
   if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
   const key = event.key.toUpperCase();
-  if (['A', 'B', 'C', 'D'].includes(key)) optionClick(key);
+  if (['A', 'B', 'C', 'D', 'E'].includes(key)) optionClick(key);
   if (event.key === 'Enter') nextQuestion();
   if (event.key === ' ') {
     event.preventDefault();

@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4179",
     "extract:data": "node scripts/extract-data.mjs",
+    "import:njust": "node scripts/import-njust-papers.mjs",
     "android:sync": "npm run build && node scripts/ensure-android.mjs && npx cap sync android"
   },
   "dependencies": {

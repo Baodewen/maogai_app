@@ -4,3 +4,4 @@ dist-offline
 android
 .DS_Store
 .playwright-cli
+.vite-dev*.log
