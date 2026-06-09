@@ -25,6 +25,7 @@ let mode = 'normal';
 let quizList = [];
 let current = 0;
 let selected = new Set();
+let draftAnswers = {};
 let examAnswers = {};
 let examSubmitted = false;
 let activeChapters = new Set(bank.stats.chapters.map((chapter) => chapter.code));
@@ -119,7 +120,6 @@ function renderShell() {
         </aside>
 
         <section class="main">
-          <section class="stats-grid" id="statsGrid"></section>
           <section class="quiz card" id="quizCard">
             <div class="progress"><div id="progressBar"></div></div>
             <div class="meta" id="meta"></div>
@@ -147,6 +147,7 @@ function renderShell() {
               <textarea id="noteInput" placeholder="给这道题写自己的记忆口诀或错因，会自动保存在本地。"></textarea>
             </div>
           </section>
+          <section class="stats-grid" id="statsGrid"></section>
           <section class="card empty" id="emptyState">当前筛选条件下没有题目。</section>
         </section>
       </main>
@@ -304,7 +305,8 @@ function renderQuestion() {
   const question = quizList[current];
   const rec = state.answered[question.id];
   const examRec = examAnswers[question.id];
-  selected = new Set(mode === 'exam' && examRec ? (examRec.answer || []) : []);
+  const draft = mode !== 'exam' && question.type === 'multi' && !rec ? (draftAnswers[question.id] || []) : [];
+  selected = new Set(mode === 'exam' && examRec ? (examRec.answer || []) : draft);
   document.getElementById('progressBar').style.width = `${Math.round(((current + 1) / quizList.length) * 100)}%`;
   const tags = (question.tags || []).slice(0, 8).map((tag) => `<span class="badge">${escapeHtml(tag)}</span>`).join('');
   document.getElementById('meta').innerHTML = `<span class="badge green">${current + 1} / ${quizList.length}</span><span class="badge">${escapeHtml(question.chapter)}</span><span class="badge">${TYPE_NAME[question.type]}</span>${question.initialWrong ? '<span class="badge red">原始错题</span>' : ''}${question.correctionNote ? '<span class="badge gold">已校正</span>' : ''}${tags}`;
@@ -332,13 +334,14 @@ function renderQuestion() {
     const reveal = mode !== 'exam' && Boolean(rec);
     opts.innerHTML = question.options.map((option) => {
       let cls = 'option';
-      if (selected.has(option.key) || (rec && rec.answer?.includes(option.key))) cls += ' selected';
+      const isSelected = selected.has(option.key) || (rec && rec.answer?.includes(option.key));
+      if (isSelected) cls += ' selected';
       if (reveal) {
         if (question.answer.includes(option.key)) cls += ' correct';
         else if (rec.answer?.includes(option.key)) cls += ' wrong';
         cls += ' disabled';
       }
-      return `<button class="${cls}" data-key="${option.key}"><span class="letter">${option.key}</span><span>${escapeHtml(option.text)}</span></button>`;
+      return `<button class="${cls}" data-key="${option.key}" aria-pressed="${isSelected ? 'true' : 'false'}" ${reveal ? 'aria-disabled="true"' : ''}><span class="letter">${option.key}</span><span>${escapeHtml(option.text)}</span><span class="choice-mark">${isSelected ? '已选' : ''}</span></button>`;
     }).join('');
     opts.querySelectorAll('.option').forEach((button) => button.addEventListener('click', () => optionClick(button.dataset.key)));
     if (reveal) showAnswer(false);
@@ -351,6 +354,7 @@ function optionClick(key) {
   const question = quizList[current];
   if (question.type === 'short') return;
   if (mode !== 'exam' && state.answered[question.id]) return;
+  if (!question.options?.some((option) => option.key === key)) return;
   if (question.type === 'single') {
     selected = new Set([key]);
     if (mode === 'exam') {
@@ -363,12 +367,25 @@ function optionClick(key) {
   }
   if (selected.has(key)) selected.delete(key);
   else selected.add(key);
-  if (mode === 'exam') examAnswers[question.id] = { answer: [...selected] };
+  if (mode === 'exam') {
+    if (selected.size) examAnswers[question.id] = { answer: [...selected] };
+    else delete examAnswers[question.id];
+  } else if (selected.size) {
+    draftAnswers[question.id] = [...selected];
+  } else {
+    delete draftAnswers[question.id];
+  }
   renderOptionsSelection();
 }
 
 function renderOptionsSelection() {
-  document.querySelectorAll('.option').forEach((button) => button.classList.toggle('selected', selected.has(button.dataset.key)));
+  document.querySelectorAll('.option').forEach((button) => {
+    const active = selected.has(button.dataset.key);
+    button.classList.toggle('selected', active);
+    button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    const mark = button.querySelector('.choice-mark');
+    if (mark) mark.textContent = active ? '已选' : '';
+  });
 }
 
 function submitAnswer() {
@@ -386,6 +403,7 @@ function submitAnswer() {
   const answer = [...selected];
   const correct = arrEq(answer, question.answer);
   state.answered[question.id] = { answer, correct, at: Date.now() };
+  delete draftAnswers[question.id];
   if (correct) state.wrong = state.wrong.filter((id) => id !== question.id);
   else state.wrong = unique([...state.wrong, question.id]);
   persistState();
